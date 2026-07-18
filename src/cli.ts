@@ -11,6 +11,11 @@
 import { breakEvenDutyCycle } from "./recursions/energy.js";
 import { ILLUSTRATIVE, SCENARIOS, getScenario } from "./engine/scenario.js";
 import { runSimulation } from "./engine/simulator.js";
+import {
+  FUSION_SCENARIOS,
+  getFusionScenario,
+} from "./engine/fusion-scenario.js";
+import { runFusionSimulation } from "./engine/fusion-simulator.js";
 import type { Watts, Joules } from "./domain/units.js";
 
 function parseFlags(args: readonly string[]): {
@@ -43,6 +48,11 @@ function cmdList(): void {
     const s = getScenario(name);
     console.log(`  ${name}\n    ${s.description}`);
   }
+  console.log("\nFusion scenarios (BLE + IMU):");
+  for (const name of Object.keys(FUSION_SCENARIOS)) {
+    const s = getFusionScenario(name);
+    console.log(`  ${name}\n    ${s.description}`);
+  }
 }
 
 function cmdDuty(): void {
@@ -54,7 +64,78 @@ function cmdDuty(): void {
   console.log(`  D_max          : ${(d * 100).toFixed(4)} %  (illustrative, not measured)`);
 }
 
+function cmdRunFusion(name: string, flags: Record<string, string | boolean>): void {
+  const base = getFusionScenario(name);
+  const scenario =
+    typeof flags["seed"] === "string" ? { ...base, seed: Number(flags["seed"]) } : base;
+  const result = runFusionSimulation(scenario);
+
+  if (flags["json"]) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  const s = result.summary;
+  console.log(`Fusion scenario: ${result.scenario}  (seed ${result.seed})`);
+  console.log(`Steps: ${s.steps}  dt: ${scenario.dt}s  beacons: ${scenario.beacons.length}`);
+  console.log(`Position RMSE       : ${s.positionRmse.toFixed(3)} m`);
+  console.log(`Final position error: ${s.finalPositionError.toFixed(3)} m`);
+  console.log(`Max position error  : ${s.maxPositionError.toFixed(3)} m`);
+  console.log(
+    `BLE scans           : attempted=${s.bleScansAttempted} performed=${s.bleScansPerformed} skipped(energy)=${s.bleScansSkippedForEnergy}`,
+  );
+  console.log(
+    `BLE measurements    : accepted=${s.bleAcceptedTotal} rejected=${s.bleRejectedTotal}  reasons={${Object.entries(
+      s.bleRejectReasons,
+    )
+      .map(([k, v]) => `${k}:${v}`)
+      .join(", ")}}`,
+  );
+  console.log(`IMU predictions     : ${s.imuPredictionCount}  ZUPTs: ${s.zuptCount}`);
+  console.log(
+    `Energy              : final=${(s.finalStoredJ * 1e3).toFixed(2)} mJ  brownoutSteps=${s.brownoutSteps}`,
+  );
+  console.log(
+    `K (MAP)             : ${s.finalMapHypothesis} conf=${s.finalMapConfidence.toFixed(3)}  entropy=${s.finalEntropy.toFixed(3)} bits`,
+  );
+
+  if (flags["compare"]) {
+    const imuOnly = runFusionSimulation(scenario, { applyBle: false });
+    const impr =
+      ((imuOnly.summary.positionRmse - s.positionRmse) / imuOnly.summary.positionRmse) * 100;
+    console.log("\nComparative (same trajectory, same seed):");
+    console.log(`  IMU-only RMSE     : ${imuOnly.summary.positionRmse.toFixed(3)} m`);
+    console.log(`  Fused RMSE        : ${s.positionRmse.toFixed(3)} m`);
+    console.log(`  Improvement       : ${impr.toFixed(1)} %`);
+  }
+
+  const tail = typeof flags["tail"] === "string" ? Number(flags["tail"]) : 5;
+  if (tail > 0) {
+    console.log(`\nLast ${tail} telemetry rows:`);
+    console.log("step   t(s)  err(m)  unc(m)  scan  acc/rej  zupt  storedJ    MAP");
+    for (const t of result.telemetry.slice(-tail)) {
+      console.log(
+        [
+          String(t.step).padStart(4),
+          t.timeS.toFixed(1).padStart(5),
+          t.positionError.toFixed(2).padStart(6),
+          t.positionUncertainty.toFixed(2).padStart(6),
+          (t.bleScanPerformed ? "yes" : "no").padEnd(4),
+          `${t.bleAccepted}/${t.bleRejected}`.padStart(7),
+          (t.zuptApplied ? "yes" : "no").padEnd(4),
+          (t.storedJ as Joules).toExponential(2).padStart(9),
+          t.mapHypothesis,
+        ].join("  "),
+      );
+    }
+  }
+}
+
 function cmdRun(name: string, flags: Record<string, string | boolean>): void {
+  if (name in FUSION_SCENARIOS) {
+    cmdRunFusion(name, flags);
+    return;
+  }
   const scenario = getScenario(name);
   const seeded =
     typeof flags["seed"] === "string"
@@ -127,6 +208,7 @@ function main(): void {
       console.log("RSD simulator CLI");
       console.log("  rsd list");
       console.log("  rsd run <scenario> [--json] [--tail N] [--seed S]");
+      console.log("  rsd run ble-imu-fusion [--compare] [--json] [--tail N] [--seed S]");
       console.log("  rsd duty");
       break;
   }
