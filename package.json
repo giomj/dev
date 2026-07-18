@@ -1,0 +1,33 @@
+{
+  "name": "rsd-simulator",
+  "version": "0.1.0",
+  "description": "Recursive State Dynamics (RSD v0.1) deterministic simulator: coupled L/K/E recursive states with energy-neutral information-per-joule scheduling.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "rsd": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "cli": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
