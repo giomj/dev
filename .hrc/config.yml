@@ -1,0 +1,40 @@
+# HRC configuration for dev (RSD Simulator)
+# Inherits doctrine from the Heliocentric Research Commons.
+
+version: 0.1
+repo: dev
+observer: the-observer
+founded: 2026-07-17
+
+inherits_from: gravitational-compass
+
+role_in_commons: engineering_substrate
+domain: recursive_state_dynamics_simulator
+
+# The dev repo already has a strong honesty statement in its README.
+# HRC extends that honesty to a formal refutation surface for every claim.
+honesty_statement_source: README.md#scope-and-honesty-statement
+
+sae_reference_impl:
+  planned_path: src/hrc/sae.ts
+  status: NOT_YET_IMPLEMENTED
+  description: |
+    TypeScript reference implementation of the Sacred Action Envelope.
+    Will validate that consequential simulation runs, dataset outputs, or
+    published claims carry the required envelope fields.
+
+enforcement:
+  sae_required_paths:
+    - src/hrc/
+    - docs/claims/
+    - published/
+  # dev already has CI patterns; HRC's Preamble check will be additive
+  force_push_to_main: forbidden
+
+sourced_vs_illustrative_rule: |
+  As already documented in the dev README, all numeric defaults are illustrative
+  unless explicitly labeled as sourced. HRC formalizes this: every constant in
+  scenario configs must carry a `source:` or `illustrative: true` tag.
+
+license: MIT  # Existing dev license; HRC standards allow this for engineering code
+             # but strongly prefer AGPL for research code and CC-BY-SA for docs.
