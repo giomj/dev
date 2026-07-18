@@ -1,0 +1,24 @@
+# Per-device secrets — never committed
+.env
+.env.local
+.env.*.local
+sources/n2yo/.env
+sources/*/secrets/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Ephemeral font downloads for PDF renderer
+/tmp/gc_fonts/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo

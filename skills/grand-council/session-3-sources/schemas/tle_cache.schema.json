@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/giomj/dev/main/skills/grand-council/session-3-sources/schemas/tle_cache.schema.json",
+  "title": "TLECacheEntry",
+  "description": "A single Two-Line Element set cached locally, with epoch age discipline enforced. Ruled binding in Session 3 (aggregator-vs-source) and Session 4 (rate-of-change gate).",
+  "type": "object",
+  "meta": {
+    "schema_version": "1.0.0",
+    "adopted_in_session": 3,
+    "hardened_in_session": 4,
+    "known_failure_modes": [
+      "Treating an aggregator (n2yo) as the primary source. Aggregator MUST be named separately from primary.",
+      "Using a TLE past ~3 days without degrading confidence — position error grows nonlinearly under drag.",
+      "Bulk-redistributing Space-Track-derived TLEs. CI rate-of-change gate blocks this at the repo level."
+    ]
+  },
+  "required": [
+    "schema_version",
+    "norad_cat_id",
+    "object_name",
+    "tle_line1",
+    "tle_line2",
+    "epoch_utc",
+    "fetched_at_utc",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "norad_cat_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The NORAD catalog ID. This is canonical, not the aggregator's 57-category taxonomy."
+    },
+    "object_name": {
+      "type": "string",
+      "description": "Human-readable object name (e.g. 'ISS (ZARYA)')."
+    },
+    "international_designator": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{3}[A-Z]{1,3}$",
+      "description": "COSPAR designator, e.g. '1998-067A'."
+    },
+    "tle_line1": {
+      "type": "string",
+      "minLength": 69,
+      "maxLength": 69,
+      "description": "Line 1 of the TLE, exactly 69 characters per NORAD spec."
+    },
+    "tle_line2": {
+      "type": "string",
+      "minLength": 69,
+      "maxLength": 69,
+      "description": "Line 2 of the TLE, exactly 69 characters per NORAD spec."
+    },
+    "epoch_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC of the TLE's own epoch (parsed from line 1)."
+    },
+    "epoch_age_days_at_fetch": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Age of the TLE at fetch time, in days. Consumers MUST degrade confidence past 3.0."
+    },
+    "fetched_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": ["USSPACECOM/Space-Track", "CelesTrak", "user_upload"],
+          "description": "The authoritative record. USSPACECOM/Space-Track is the state catalog."
+        },
+        "aggregator": {
+          "type": ["string", "null"],
+          "enum": ["n2yo.com", "CelesTrak", "Heavens-Above", null],
+          "description": "Named separately from primary. When null, primary was fetched directly."
+        },
+        "url_fetched": {"type": "string", "format": "uri"},
+        "license_binding": {
+          "type": "string",
+          "enum": ["public-domain", "space-track-ToS", "aggregator-ToS"],
+          "description": "The most restrictive binding in the provenance chain sets the ceiling."
+        }
+      }
+    },
+    "sgp4_ready": {
+      "type": "boolean",
+      "description": "True if the TLE was validated for SGP4 propagation locally (checksums verified, ranges sane)."
+    }
+  },
+  "additionalProperties": false
+}

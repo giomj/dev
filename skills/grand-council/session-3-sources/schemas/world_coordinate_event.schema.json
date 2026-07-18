@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/giomj/dev/main/skills/grand-council/session-3-sources/schemas/world_coordinate_event.schema.json",
+  "title": "WorldCoordinateEvent",
+  "description": "Canonical reference frame for any spacetime event across the emperor's portfolio. WGS84 geodetic position + UTC timestamp. Adopted by the Mathematician in Session 3; ruled binding in Session 4.",
+  "type": "object",
+  "meta": {
+    "schema_version": "1.0.0",
+    "adopted_in_session": 3,
+    "hardened_in_session": 4,
+    "known_failure_modes": [
+      "Confusing WGS84 geodetic latitude with geocentric latitude for satellite subpoints (differ up to ~11 arcmin).",
+      "Reporting altitude without frame (ellipsoid height vs mean-sea-level differ by tens of meters).",
+      "Dropping the uncertainty band because 'the source didn't include one' — physics does not permit unitless certainty."
+    ]
+  },
+  "required": ["event_type", "position", "timestamp_utc", "schema_version"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver. Major bump on breaking change; minor on additive; patch on cosmetic."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "satellite_position",
+        "ground_observation",
+        "hardware_capture",
+        "plant_status_change",
+        "ground_station",
+        "user_defined"
+      ]
+    },
+    "position": {
+      "type": "object",
+      "required": ["lat_deg", "lon_deg", "alt_m", "frame"],
+      "properties": {
+        "lat_deg": {
+          "type": "number",
+          "minimum": -90.0,
+          "maximum": 90.0,
+          "description": "Geodetic latitude in degrees (WGS84 by default). Positive north."
+        },
+        "lon_deg": {
+          "type": "number",
+          "minimum": -180.0,
+          "maximum": 180.0,
+          "description": "Longitude in degrees. Positive east."
+        },
+        "alt_m": {
+          "type": "number",
+          "description": "Altitude in meters. Reference frame named by 'frame' below."
+        },
+        "frame": {
+          "type": "string",
+          "enum": ["WGS84_ellipsoid", "WGS84_MSL", "ECEF_meters"],
+          "description": "Reference frame for the altitude value. WGS84_ellipsoid is the default and preferred frame."
+        },
+        "uncertainty_m": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "1-sigma spherical position uncertainty in meters. Required for measured positions; omit for user-defined."
+        }
+      }
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC. Must include the 'Z' suffix or explicit +00:00 offset. Local times are rejected."
+    },
+    "timestamp_uncertainty_s": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "1-sigma timing uncertainty in seconds. TLE-derived positions should carry the epoch age here in seconds."
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance chain. Required when the event was ingested from an external source.",
+      "properties": {
+        "primary": {"type": "string", "description": "The authoritative record. e.g. 'USSPACECOM catalog', 'GOGPT Jan 2026 release'."},
+        "aggregator": {"type": "string", "description": "Any intermediary. e.g. 'n2yo.com', 'CelesTrak'. Must be named when the primary was not fetched directly."},
+        "fetched_at_utc": {"type": "string", "format": "date-time"},
+        "license": {"type": "string", "enum": ["CC-BY-4.0", "GPL-family", "proprietary-with-ToS", "public-domain", "unknown"]}
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Event-type-specific payload. Structure not enforced by this schema."
+    }
+  },
+  "additionalProperties": false
+}

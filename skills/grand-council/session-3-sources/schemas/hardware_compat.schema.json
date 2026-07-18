@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/giomj/dev/main/skills/grand-council/session-3-sources/schemas/hardware_compat.schema.json",
+  "title": "HardwareCompatMatrix",
+  "description": "Hand-maintained SDR hardware compatibility matrix for SatDump. This is our original commentary, not SatDump's file. Ruled binding in Session 4 (no SatDump source, binary, or config file enters this tree).",
+  "type": "object",
+  "meta": {
+    "schema_version": "1.0.0",
+    "adopted_in_session": 3,
+    "hardened_in_session": 4,
+    "known_failure_modes": [
+      "Confusing 'supported on desktop' with 'supported on Android' — mobile drops several drivers.",
+      "Reporting 'works' without naming which pipeline / band was tested.",
+      "Silently including SatDump-authored config text. This schema catalogs; it does not redistribute."
+    ]
+  },
+  "required": ["schema_version", "compiled_at_utc", "devices"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "compiled_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this matrix was last compiled by the maintainer."
+    },
+    "satdump_version_range": {
+      "type": "string",
+      "description": "Range of SatDump versions this matrix targets (e.g. '>=1.2.0 <2.0')."
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["device_id", "display_name", "platform_support", "frequency_range_hz", "max_sample_rate_hz"],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "description": "Stable id (e.g. 'rtl-sdr-v3', 'airspy-mini', 'hackrf-one')."
+          },
+          "display_name": {"type": "string"},
+          "platform_support": {
+            "type": "object",
+            "required": ["desktop", "android"],
+            "properties": {
+              "desktop": {"type": "boolean"},
+              "android": {"type": "boolean"},
+              "notes": {"type": "string"}
+            }
+          },
+          "frequency_range_hz": {
+            "type": "object",
+            "required": ["min", "max"],
+            "properties": {
+              "min": {"type": "integer", "minimum": 0},
+              "max": {"type": "integer", "minimum": 0}
+            }
+          },
+          "max_sample_rate_hz": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum continuous sample rate without USB drops on typical hardware."
+          },
+          "adc_bits": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 24,
+            "description": "Effective ADC bit depth. Physicist warned: this drives quantization noise floor."
+          },
+          "typical_use_cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "noaa_apt_137MHz",
+                "meteor_lrpt_137MHz",
+                "goes_hrit_1.7GHz",
+                "iridium_1.6GHz",
+                "airband_118MHz",
+                "amateur_vhf_uhf",
+                "hf_wideband",
+                "general_purpose"
+              ]
+            }
+          },
+          "price_usd_approx": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Approximate street price at time of matrix compile. Not a quote."
+          },
+          "notes": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

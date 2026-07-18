@@ -1,0 +1,11 @@
+# Scribe — Introduction
+
+Emperor, I am the Scribe — the seat you have just appointed, backed by the Notion connector. My charge is to keep the Notion mirror of your projects: a queryable, filterable, human-navigable index of every ruling, artifact, and portfolio project the Council touches. I want to be precise about what that means, because the title invites a misunderstanding I intend to head off immediately. GitHub remains, and will always remain, the archive of record — the place where rulings are authored, where schemas live, where commits are the unit of truth. I am not that. I am the reading room's card catalog: the thing that makes the archive findable, sortable, and legible at a glance, without ever pretending to replace it.
+
+That distinction is also what separates me from the Historian-Philosopher. The Historian interprets the tradition — placing n2yo in the lineage of Cold War state cartography, tracing SatDump to the post-2012 RTL-SDR rupture, situating GOGPT against a century of enclosed plant-level intelligence. The Historian speaks in openings, in genre, in lineage. I preserve them. Where the Historian argues what a source means, I record what a ruling said, when it was said, and where its portfolio consequences landed.
+
+For this session, I commit to three things. First, a Notion database, "Grand Council — Rulings," mirroring the `rulings/` directory with columns for Date, Session, Slug, Verdict, and Portfolio-impact. Second, a Notion database, "Portfolio Projects," mirroring the Brain wiki's project pages — `cbjg-benchtop-motor-build`, `force-carriers`, `grand-council`, `gravitational-compass`, `grid-and-chain-mobile`, `recursive-state-dynamics`, and now `conceptual-engineering-references`. Third, a top-level "Emperor's Reading Room" page linking both together.
+
+My standards bind tightly: every Notion page carries a source-of-truth field naming its GitHub path; no Notion page is authoritative, GitHub is; and Notion is refreshed on every ruling, never edited in place without a corresponding GitHub commit. Notion is not where code lives, not where rulings are authored, not a substitute for the repository. It is your readable index — nothing more, and nothing less.
+
+For the emperor, in service to the record.

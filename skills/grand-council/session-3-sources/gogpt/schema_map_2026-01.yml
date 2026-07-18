@@ -1,0 +1,57 @@
+# GOGPT Schema Map — January 2026 release
+# Append-only. Each release gets its own file. Never edit a past release's map.
+#
+# This is the Mathematician's discipline (Session 3, Physicist L). The GOGPT
+# columns map from GEM's XLSX headers to normalized snake_case keys we use
+# downstream. When GEM changes a column, we do NOT rewrite this file — we
+# create schema_map_2026-07.yml for the next release.
+
+release: "2026-01"
+citation: "Global Oil and Gas Plant Tracker, Global Energy Monitor, January 2026 release."
+license: "CC-BY-4.0"
+fetched_at_utc: "2026-07-18T00:00:00Z"
+schema_version: "1.0.0"
+
+column_map:
+  # GEM header (case-insensitive) → our normalized key
+  "Plant Name": plant_name
+  "Country/Area": country
+  "Subnational unit (province, state)": subnational
+  "Status": status  # proposed / permitted / construction / operating / mothballed / retired
+  "Capacity (MW)": capacity_mw
+  "Fuel": fuel  # gas / oil / cogeneration
+  "Technology": technology
+  "Start year": start_year
+  "Retired year": retired_year
+  "Latitude": lat_deg
+  "Longitude": lon_deg
+  "Owner": owner
+  "Parent": parent_company
+  "Wiki URL": wiki_url
+
+status_enum:
+  # Normalized status codes. Do not consume this dataset without weighting these.
+  - proposed
+  - permitted
+  - construction
+  - operating
+  - mothballed
+  - retired
+
+physical_derivations:
+  # Session 3 Physicist L: never quote a derivative without stating the assumption.
+  annual_generation_TWh: "capacity_mw * capacity_factor * 8760 / 1e6"
+  annual_co2_MtCO2: "annual_generation_TWh * emissions_factor_tCO2_per_MWh"
+  capacity_factor_defaults:
+    gas_combined_cycle: 0.55
+    gas_peaker: 0.15
+    oil: 0.10
+  emissions_factor_defaults_tCO2_per_MWh:
+    gas_combined_cycle: 0.35
+    gas_peaker: 0.55
+    oil: 0.75
+
+known_failure_modes:
+  - "Treating capacity_mw as generation. It is nameplate — multiply by capacity_factor and hours."
+  - "Reporting only 'in development' without breakdown. Proposed and permitted have vastly different realization probabilities."
+  - "Missing the retired_year for retired plants — check status='retired' has a year."

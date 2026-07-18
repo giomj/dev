@@ -1,0 +1,28 @@
+name: Grand Council — Attribution Check
+
+on:
+  push:
+    paths:
+      - 'skills/grand-council/session-3-sources/**'
+  pull_request:
+    paths:
+      - 'skills/grand-council/session-3-sources/**'
+
+jobs:
+  attribution:
+    name: License-gradient and attribution gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Grand Council attribution check
+        working-directory: skills/grand-council/session-3-sources
+        run: python scripts/check_attribution.py
