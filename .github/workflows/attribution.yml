@@ -3,10 +3,10 @@ name: Grand Council — Attribution Check
 on:
   push:
     paths:
-      - 'skills/grand-council/session-3-sources/**'
+      - 'references/**'
   pull_request:
     paths:
-      - 'skills/grand-council/session-3-sources/**'
+      - 'references/**'
 
 jobs:
   attribution:
@@ -24,5 +24,5 @@ jobs:
           python-version: '3.12'
 
       - name: Run Grand Council attribution check
-        working-directory: skills/grand-council/session-3-sources
+        working-directory: references
         run: python scripts/check_attribution.py
