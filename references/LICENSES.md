@@ -57,6 +57,76 @@ The check is opinionated by design. It is easier to argue with the check than to
 
 ---
 
+## Regime 4 — NOAA Space Weather Prediction Center (public domain, U.S. Government)
+
+**What we hold:** Catalog documentation (`noaa/catalog.md`) and ingested JSON-lines snapshots of the 3-hour planetary Kp index and solar wind plasma/magnetometer products under `noaa/data/`, produced by `scripts/ingest/noaa_swpc.py`.
+
+**Provenance chain:** NOAA SWPC is the **primary** source — there is no aggregator in this chain. Data is fetched directly from `services.swpc.noaa.gov`.
+
+**Binding:** U.S. Government works are not subject to copyright protection in the United States (17 U.S.C. § 105). License identifier: `public-domain-USG`. There is no redistribution restriction, but courtesy attribution is still required and is carried on every record. See [`UPSTREAM_TERMS.md`](UPSTREAM_TERMS.md) for SWPC's rate-limit and polling-cadence guidance — this shelf treats SWPC files as static-by-URL resources refreshed on a fixed schedule and paces ingest with a 1-second delay between the three product fetches.
+
+**Canonical citation:** `NOAA Space Weather Prediction Center, U.S. Department of Commerce.` (see [`noaa/ATTRIBUTION.md`](noaa/ATTRIBUTION.md))
+
+**Downstream obligation:** Never conflate the 3-hour observed Kp (`kp_index_3h`) with the 1-minute estimated Kp (`kp_index_1m`) — they are different products with different latency/accuracy tradeoffs and are not directly comparable.
+
+---
+
+## Regime 5 — USGS Earthquake Hazards Program (public domain, U.S. Government)
+
+**What we hold:** Catalog documentation (`usgs/catalog.md`) and ingested JSON-lines snapshots of the rolling 24-hour M2.5+ earthquake feed under `usgs/data/`, produced by `scripts/ingest/usgs_earthquake.py`.
+
+**Provenance chain:** USGS Earthquake Hazards Program is the **primary** source, fetched directly from `earthquake.usgs.gov`. No aggregator.
+
+**Binding:** U.S. Government work, not subject to U.S. copyright (17 U.S.C. § 105). License identifier: `public-domain-USG`. USGS actively rate-limits and returns HTTP 429 under load; `scripts/ingest/usgs_earthquake.py` aborts cleanly on 429 rather than retry-hammering, per [`UPSTREAM_TERMS.md`](UPSTREAM_TERMS.md).
+
+**Canonical citation:** `USGS Earthquake Hazards Program, U.S. Geological Survey.` (see [`usgs/ATTRIBUTION.md`](usgs/ATTRIBUTION.md))
+
+**Downstream obligation:** Never quote an earthquake magnitude without its magnitude type (`mww`, `ml`, `md`, etc.) — magnitudes on different scales are not directly comparable.
+
+---
+
+## Regime 6 — JPL HORIZONS (public domain, NASA/Caltech)
+
+**What we hold:** Catalog documentation (`horizons/catalog.md`) and ingested JSON-lines snapshots of planetary state vectors under `horizons/data/`, produced by `scripts/ingest/jpl_horizons.py`.
+
+**Provenance chain:** JPL Horizons System is the **primary** source, fetched directly from `ssd.jpl.nasa.gov`. No aggregator.
+
+**Binding:** NASA/JPL (operated by Caltech under a NASA contract) content of this kind is treated as public domain. License identifier: `public-domain-NASA`. See [`UPSTREAM_TERMS.md`](UPSTREAM_TERMS.md) for target/observer/frame conventions — HORIZONS returns materially different numbers for the same nominal query depending on `CENTER`/reference frame, so every record explicitly carries `target_body` and `reference_frame`.
+
+**Canonical citation:** `JPL Horizons System, NASA Jet Propulsion Laboratory / California Institute of Technology.` (see [`horizons/ATTRIBUTION.md`](horizons/ATTRIBUTION.md))
+
+**Downstream obligation:** Never present a HORIZONS position/vector without its reference frame and center body — the same target body's coordinates differ substantially between heliocentric and geocentric frames.
+
+---
+
+## Regime 7 — Our World in Data / OWID (CC BY 4.0, with mixed upstream provenance)
+
+**What we hold:** Catalog documentation (`owid/catalog.md`), the upstream license analysis (`owid/UPSTREAM_LICENSES.md`), pinned raw CSV pulls, and ingested JSON-lines records under `owid/data/`, produced by `scripts/ingest/owid.py`.
+
+**Provenance chain:** OWID is an **aggregator**. The primary sources vary by dataset: Global Carbon Budget v15 and the Maddison Project 2023 (both CC BY 4.0, fully clean) for the CO₂ metrics; Ember (CC BY 4.0) blended with the Energy Institute (copyright-reserved, not licensed for bulk redistribution) for the electricity-share metrics.
+
+**Binding:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) governs OWID's own compilation and the Ember-sourced rows. **This shelf never ingests `energy-consumption-by-source-and-country`** (BLOCKED — sole upstream is the Energy Institute Statistical Review, which is not licensed for bulk redistribution) and **never retains Energy-Institute-sourced rows** in `share-elec-by-source` or `share-electricity-renewables` — `scripts/ingest/owid.py` filters those datasets to Ember's coverage window and tags every retained row `sub_source: "Ember"`. See [`owid/UPSTREAM_LICENSES.md`](owid/UPSTREAM_LICENSES.md) for the full upstream-chain analysis.
+
+**Canonical citation:** `Our World in Data, ourworldindata.org, CC BY 4.0 — with upstream attribution per dataset (Global Carbon Budget v15, Maddison Project 2023, Ember).` (see [`owid/ATTRIBUTION.md`](owid/ATTRIBUTION.md) for the full per-dataset citation table)
+
+**Downstream obligation:** Never compact away the `sub_source` field on OWID-derived rows — it is the only machine-readable signal distinguishing a CC BY 4.0 Ember row from a copyright-reserved Energy Institute row that must never appear in this shelf's output at all.
+
+---
+
+## Regime 8 — IRENA / International Renewable Energy Agency (© IRENA, pinned-CSV replay only)
+
+**What we hold:** Catalog documentation (`irena/catalog.md`), the upstream posture analysis (`irena/UPSTREAM_LICENSES.md`), and — once a human performs a manual PxWeb export — pinned CSVs and derived JSON-lines records under `irena/data/`, replayed (never fetched) by `scripts/ingest/irena_pinned.py`.
+
+**Provenance chain:** IRENA is the **primary** source for Renewable Capacity Statistics 2025, Renewable energy statistics 2025, and Renewable Power Generation Costs in 2024. No aggregator.
+
+**Binding:** © IRENA. IRENA's PxWeb data explorer sits behind an access layer that rejects automated clients; per the emperor's explicit ruling, **no script in this shelf may fetch from `www.irena.org` or any IRENA-operated endpoint.** `scripts/ingest/irena_pinned.py` performs pinned-CSV replay only — a human must manually export each table from the PxWeb UI and drop the CSV into `irena/data/`. Every value carries the © IRENA citation and, where applicable, the specific IRENA publication it was pinned from. See [`irena/UPSTREAM_LICENSES.md`](irena/UPSTREAM_LICENSES.md) for the two license regimes (restrictive yearbook data vs. more permissive LCOE data).
+
+**Canonical citation:** `© IRENA <year>. IRENA (2025), Renewable Capacity Statistics 2025 / Renewable energy statistics 2025 / Renewable Power Generation Costs in 2024.` (see [`irena/ATTRIBUTION.md`](irena/ATTRIBUTION.md) for the per-dataset citation table)
+
+**Downstream obligation:** Never automate a fetch against irena.org from any script in this repository, regardless of how convenient a public-looking CSV export URL appears to be. Never quote an LCOE figure without its technology qualifier.
+
+---
+
 ## Precedence
 
 If you find any conflict between this file and an upstream license or ToS, the upstream binds. This file is a summary and a helper — not an authoritative substitute for the upstream text. When in doubt, read the upstream license.

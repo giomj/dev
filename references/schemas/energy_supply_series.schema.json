@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/giomj/dev/main/references/schemas/energy_supply_series.schema.json",
+  "title": "EnergySupplySeries",
+  "description": "A time-series metric of a country's energy/emissions profile in a given year, sourced from OWID (Our World in Data) or IRENA. Adopted in Session 5 (Wave 2 ingest) to carry mixed-license OWID Ember+EI rows and pinned IRENA statistics without losing per-row provenance.",
+  "type": "object",
+  "meta": {
+    "schema_version": "1.0.0",
+    "adopted_in_session": 5,
+    "known_failure_modes": [
+      "Confusing country_iso3 with ISO2 codes — OWID uses World Bank country groupings that aren't strict ISO codes for aggregates like OWID_WRL.",
+      "Losing sub_source when compacting OWID Ember+EI rows into a single series — Ember rows are CC BY 4.0 but EI rows are copyright-restricted. sub_source MUST be preserved per-row.",
+      "Publishing LCOE values without the technology qualifier — a global average LCOE is meaningless without specifying which technology.",
+      "Dropping the citation string during compaction — the license license requires it be attached to the value, not to the file header."
+    ]
+  },
+  "required": [
+    "schema_version",
+    "metric",
+    "country_iso3",
+    "year",
+    "value",
+    "unit",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver. Major bump on breaking change; minor on additive; patch on cosmetic."
+    },
+    "metric": {
+      "type": "string",
+      "enum": [
+        "co2_per_capita_t",
+        "co2_per_gdp_kg_per_intl_dollar",
+        "electricity_share_pct_by_source",
+        "electricity_share_renewables_pct",
+        "renewable_capacity_mw_by_technology",
+        "renewable_generation_gwh_by_technology",
+        "renewable_capacity_additions_mw",
+        "lcoe_usd_per_mwh_by_technology"
+      ],
+      "description": "The metric this record reports. *_by_technology metrics require the technology field."
+    },
+    "country_iso3": {
+      "type": "string",
+      "description": "ISO 3166-1 alpha-3 country code, or an OWID World-Bank-style aggregate code (e.g. 'OWID_WRL' for World, 'OWID_EU27' for the EU-27 grouping). Not a strict ISO code for aggregates — see known_failure_modes.",
+      "pattern": "^[A-Z0-9_]{3,10}$"
+    },
+    "year": {
+      "type": "integer",
+      "minimum": 1700,
+      "maximum": 2100,
+      "description": "Calendar year the value applies to. Global Carbon Budget's per-capita CO2 series extends back to the 1700s for some countries."
+    },
+    "value": {
+      "type": "number",
+      "description": "The metric value, in the unit named by 'unit'."
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of the value, e.g. 't', 'kg_per_intl_dollar', 'pct', 'MW', 'GWh', 'USD_per_MWh'."
+    },
+    "technology": {
+      "type": "string",
+      "description": "Required (in practice) for *_by_technology metrics. e.g. 'solar_pv', 'onshore_wind', 'offshore_wind', 'hydropower', 'bioenergy', 'geothermal', 'coal', 'gas', 'oil', 'nuclear', 'other_renewables'.",
+      "enum": [
+        "solar_pv",
+        "onshore_wind",
+        "offshore_wind",
+        "hydropower",
+        "bioenergy",
+        "geothermal",
+        "marine",
+        "coal",
+        "gas",
+        "oil",
+        "nuclear",
+        "other_renewables",
+        "renewables_total"
+      ]
+    },
+    "sub_source": {
+      "type": "string",
+      "description": "Critical for the OWID mixed-license datasets. e.g. 'Ember' vs 'Energy Institute'. MUST be preserved per-row; never compacted away.",
+      "enum": ["Ember", "Energy Institute", "Global Carbon Budget", "Maddison Project 2023", "IRENA", "OWID"]
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance chain. Required on every record.",
+      "required": ["primary", "aggregator", "fetched_at_utc", "license", "citation", "owid_slug", "irena_publication"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "The upstream organization that produced the underlying figure. e.g. 'Ember', 'Energy Institute', 'Global Carbon Project', 'Maddison Project', 'IRENA'."
+        },
+        "aggregator": {
+          "type": ["string", "null"],
+          "description": "The aggregator that republished the primary data. 'OWID' or 'IRENA' — nullable if fetched directly from the primary."
+        },
+        "fetched_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp of the fetch that produced this record."
+        },
+        "license": {
+          "type": "string",
+          "description": "Upstream license identifier for this specific row, e.g. 'CC BY 4.0', '© Energy Institute 2025', '© IRENA 2025'."
+        },
+        "citation": {
+          "type": "string",
+          "description": "Verbatim required attribution string for this row. Must travel with the value, not just the file header."
+        },
+        "owid_slug": {
+          "type": ["string", "null"],
+          "description": "OWID grapher slug this record was fetched from, e.g. 'co-emissions-per-capita'. Null if not an OWID-sourced record."
+        },
+        "irena_publication": {
+          "type": ["string", "null"],
+          "description": "IRENA publication citation this record was pinned from, e.g. 'IRENA (2025), Renewable capacity statistics 2025, International Renewable Energy Agency, Abu Dhabi.'. Null if not an IRENA-sourced record."
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

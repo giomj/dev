@@ -6,20 +6,27 @@ Ruled binding in Session 4 (Engineer + Skeptic reinforcement).
 
 Fails the build if any of the following are true:
 
-  1. Any file under sources/gogpt/derived/ or dashboards/ lacks a YAML front-matter
+  1. Any file under gogpt/derived/ or dashboards/ lacks a YAML front-matter
      'modifications:' block. CC BY 4.0 requires "indicate if changes were made"
      and this check enforces machine-readability of that indication.
 
-  2. sources/n2yo/cache/ gains more than 5 new TLE entries in one push.
+  2. n2yo/cache/ gains more than 5 new TLE entries in one push.
      This is the "bulk redistribution" rate-of-change gate. n2yo is a courier
      of Space-Track state; the repo does not become a mirror of that state.
 
   3. A citation to GOGPT is present in a derived artifact without matching the
-     canonical string in sources/gogpt/ATTRIBUTION.md.
+     canonical string in gogpt/ATTRIBUTION.md.
 
   4. Any file named 'SatDump*' with extension .json, .cfg, .sh, or .py is added
-     under sources/satdump/. This is the "no vendoring" gate — SatDump is
+     under satdump/. This is the "no vendoring" gate — SatDump is
      GPL and must not be bundled.
+
+Note on paths: REPO_ROOT resolves to references/ itself (this script lives at
+references/scripts/check_attribution.py), so all base paths below are relative
+to references/ directly — e.g. 'gogpt/derived' means references/gogpt/derived.
+Commit 7a4dd75 moved the shelf from sources/<name>/ to references/<name>/;
+these paths were fixed in Wave 2 (Session 5) to drop the stale 'sources/'
+prefix accordingly.
 
 Exit code:
   0 = pass
@@ -58,9 +65,9 @@ def _has_modifications_block(text: str) -> bool:
 
 
 def check_derived_modifications() -> list[str]:
-    """Every file under sources/gogpt/derived/ or dashboards/ must carry a modifications block."""
+    """Every file under gogpt/derived/ or dashboards/ must carry a modifications block."""
     errors: list[str] = []
-    for base in ("sources/gogpt/derived", "dashboards"):
+    for base in ("gogpt/derived", "dashboards"):
         base_path = REPO_ROOT / base
         if not base_path.exists():
             continue
@@ -81,9 +88,9 @@ def check_derived_modifications() -> list[str]:
 
 
 def check_tle_rate_of_change() -> list[str]:
-    """No more than TLE_ADD_RATE_LIMIT new files may land under sources/n2yo/cache/ in one push."""
+    """No more than TLE_ADD_RATE_LIMIT new files may land under n2yo/cache/ in one push."""
     errors: list[str] = []
-    base = "sources/n2yo/cache"
+    base = "n2yo/cache"
     if not (REPO_ROOT / base).exists():
         return errors
     # Compare current HEAD to the merge base with origin/main (or the previous commit if origin missing).
@@ -105,7 +112,7 @@ def check_tle_rate_of_change() -> list[str]:
 def check_gogpt_citations() -> list[str]:
     """Any file that mentions GOGPT / Global Energy Monitor must use the canonical citation."""
     errors: list[str] = []
-    for base in ("sources/gogpt/derived", "dashboards", "docs"):
+    for base in ("gogpt/derived", "dashboards", "docs"):
         base_path = REPO_ROOT / base
         if not base_path.exists():
             continue
@@ -124,9 +131,9 @@ def check_gogpt_citations() -> list[str]:
 
 
 def check_satdump_no_vendoring() -> list[str]:
-    """Refuse to accept SatDump-authored source, config, or scripts under sources/satdump/."""
+    """Refuse to accept SatDump-authored source, config, or scripts under satdump/."""
     errors: list[str] = []
-    base = REPO_ROOT / "sources" / "satdump"
+    base = REPO_ROOT / "satdump"
     if not base.exists():
         return errors
     for path in base.rglob("*"):

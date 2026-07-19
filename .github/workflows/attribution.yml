@@ -26,3 +26,10 @@ jobs:
       - name: Run Grand Council attribution check
         working-directory: references
         run: python scripts/check_attribution.py
+
+      - name: Install schema validation dependencies
+        run: pip install jsonschema
+
+      - name: Run Wave 2 schema validation
+        working-directory: references
+        run: python scripts/validate_schemas.py

@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/giomj/dev/main/references/schemas/geophysical_event.schema.json",
+  "title": "GeophysicalEvent",
+  "description": "An instantaneous or short-interval measurement from a geophysical monitoring source — NOAA SWPC space weather, USGS earthquakes, or JPL HORIZONS ephemerides. Adopted in Session 5 (Wave 2 ingest).",
+  "type": "object",
+  "meta": {
+    "schema_version": "1.0.0",
+    "adopted_in_session": 5,
+    "known_failure_modes": [
+      "Interpreting the 1-minute estimated Kp as the 3-hour planetary Kp — they are separate products and are not comparable at the tail.",
+      "Fetching HORIZONS without target/observer/frame specified — the API returns different values for the same 'planet position' depending on reference frame.",
+      "Reporting USGS earthquake magnitude without specifying magnitude type (mww, ml, md) — magnitudes on different scales are not directly comparable.",
+      "Assuming an SWPC JSON file update means fresh data — some products update timestamps without new observations."
+    ]
+  },
+  "required": [
+    "schema_version",
+    "event_kind",
+    "timestamp_utc",
+    "value",
+    "unit",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver. Major bump on breaking change; minor on additive; patch on cosmetic."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "kp_index_3h",
+        "kp_index_1m",
+        "solar_wind_speed_km_s",
+        "solar_wind_density_p_cc",
+        "earthquake_magnitude",
+        "earthquake_depth_km",
+        "planet_position_au"
+      ],
+      "description": "The kind of geophysical measurement this record reports. kp_index_3h and kp_index_1m are separate NOAA products and must never be compared directly."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC. Must include the 'Z' suffix or explicit +00:00 offset. Local times are rejected."
+    },
+    "value": {
+      "type": "number",
+      "description": "The measurement value, in the unit named by 'unit'."
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of the value, e.g. 'kp_unitless', 'km_s', 'p_cc', 'mww', 'ml', 'md', 'km', 'au'."
+    },
+    "magnitude_type": {
+      "type": "string",
+      "description": "Required in practice for earthquake_magnitude records. USGS magnitude scale used, e.g. 'mww', 'ml', 'md', 'mb'. Magnitudes on different scales are not directly comparable.",
+      "enum": ["mww", "mwc", "mwb", "mwr", "ml", "md", "mb", "ms"]
+    },
+    "target_body": {
+      "type": "string",
+      "description": "For HORIZONS: the body whose position/state is reported, e.g. 'Sun', 'Moon', 'Mars'."
+    },
+    "reference_frame": {
+      "type": "string",
+      "description": "For HORIZONS: the observer/center and frame convention used, e.g. '@sun', '500@399', '500@10'. Required to interpret target_body positions correctly."
+    },
+    "position": {
+      "type": "object",
+      "description": "Optional WorldCoordinateEvent-style position object, inlined here to avoid a cross-schema $ref. For solar-wind measurements, refers to the spacecraft location; for earthquakes, the hypocenter; for planet positions, geocentric or heliocentric coordinates.",
+      "required": ["lat_deg", "lon_deg", "frame"],
+      "properties": {
+        "lat_deg": {
+          "type": "number",
+          "minimum": -90.0,
+          "maximum": 90.0,
+          "description": "Latitude in degrees. Positive north. For heliocentric/geocentric planet positions, may represent ecliptic latitude."
+        },
+        "lon_deg": {
+          "type": "number",
+          "minimum": -180.0,
+          "maximum": 360.0,
+          "description": "Longitude in degrees. Positive east. For heliocentric/geocentric planet positions, may represent ecliptic longitude."
+        },
+        "alt_m": {
+          "type": "number",
+          "description": "Altitude/depth in meters where applicable (e.g. earthquake hypocenter depth converted to meters)."
+        },
+        "frame": {
+          "type": "string",
+          "enum": ["WGS84_ellipsoid", "WGS84_MSL", "ECEF_meters", "heliocentric_ecliptic", "geocentric_equatorial", "spacecraft_ephemeris"],
+          "description": "Reference frame for the position. Earthquake hypocenters use WGS84_ellipsoid; HORIZONS vectors use heliocentric_ecliptic or geocentric_equatorial; solar-wind spacecraft use spacecraft_ephemeris."
+        },
+        "uncertainty_m": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "1-sigma position uncertainty in meters, when known (e.g. USGS horizontal error)."
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance chain. Required on every record.",
+      "required": ["primary", "aggregator", "fetched_at_utc", "license", "citation"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "The authoritative record, e.g. 'NOAA Space Weather Prediction Center', 'USGS Earthquake Hazards Program', 'JPL Horizons System'."
+        },
+        "aggregator": {
+          "type": ["string", "null"],
+          "description": "Any intermediary. Nullable — these three sources are fetched directly, so this is typically null."
+        },
+        "fetched_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp of the fetch that produced this record."
+        },
+        "license": {
+          "type": "string",
+          "enum": ["public-domain-USG", "public-domain-NASA"],
+          "description": "'public-domain-USG' for NOAA/USGS (17 U.S.C. § 105), 'public-domain-NASA' for JPL HORIZONS."
+        },
+        "citation": {
+          "type": "string",
+          "description": "Verbatim courtesy citation string for this record's source, per UPSTREAM_TERMS.md."
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
