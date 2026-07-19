@@ -18,6 +18,11 @@ Architect's self-review: `architect-review.md`.
 | 2026-07-18  | `session-2-four-artifacts`      | 4         | See `rulings/2026-07-18-session-2-four-artifacts.md` |
 | 2026-07-18  | `session-3-three-sources`       | 4 (J/K/L/M) | J Sound · K Sound · L Sound · M Mixed (Motion to Reject GOGPT↔RSD accepted) |
 | 2026-07-18  | `session-4-distribution`        | 4 (C1..C4)  | C1 Sound (reinforced) · C2 Sound (corrected) · C3 Mixed (Motion to Modify accepted) · C4 Sound (bound) |
+| 2026-07-18  | `session-5-expansion-plan`      | Procedural  | Wave-1 publish approved · rename shelf → `references/` · editorial policy before v0.1.0 · 7-day DOI quarantine (Skeptic Motion #1) · known_failure_modes on frontend (Skeptic Motion #2) · schemas frozen during Wave 2 · Wave-3 refactor split 4 commits · apparatus criticus for Wave-3 provenance |
+
+## Session 5 layout (expansion plan council)
+
+- `rulings/2026-07-18-session-5-expansion-plan.md` — brief 3-seat council on Emperor Gianotti's 4-wave expansion plan; nine binding items accepted for execution
 
 ## Session 4 layout
 
