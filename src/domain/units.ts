@@ -24,6 +24,12 @@ export type Watts = Quantity<"W">;
 export type Joules = Quantity<"J">;
 export type Metres = Quantity<"m">;
 export type MetresPerSecond = Quantity<"m/s">;
+export type MetresPerSecond2 = Quantity<"m/s^2">;
+export type Radians = Quantity<"rad">;
+export type RadiansPerSecond = Quantity<"rad/s">;
+export type Hertz = Quantity<"Hz">;
+/** Received signal strength in dBm (BLE RSSI). */
+export type Dbm = Quantity<"dBm">;
 export type Volts = Quantity<"V">;
 export type Amperes = Quantity<"A">;
 
@@ -52,3 +58,18 @@ export const clamp = (x: number, lo: number, hi: number): number =>
 
 export const isFiniteNumber = (x: unknown): x is number =>
   typeof x === "number" && Number.isFinite(x);
+
+/** hertz -> sample period (s). */
+export const periodFromHz = (hz: Hertz): Seconds => {
+  if (!isFiniteNumber(hz) || hz <= 0) throw new RangeError("frequency must be finite and > 0");
+  return (1 / hz) as Seconds;
+};
+
+/** Wrap an angle to (-pi, pi]; keeps yaw and innovations numerically stable. */
+export const wrapAngle = (a: number): Radians => {
+  const twoPi = 2 * Math.PI;
+  let x = a % twoPi;
+  if (x <= -Math.PI) x += twoPi;
+  else if (x > Math.PI) x -= twoPi;
+  return x as Radians;
+};

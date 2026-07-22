@@ -30,7 +30,7 @@ device performance.
 
 | Aspect | Status |
 |---|---|
-| Estimator forms (Kalman predict/update, Bayesian evidence update, clipped energy balance) | Standard tools; sourced in report §1, §4, §6 |
+| Estimator forms (Kalman predict/update, EKF IMU/BLE fusion, ZUPT, chi-square NIS gating, Bayesian evidence update, clipped energy balance) | Standard tools; sourced in report §1, §4, §6 |
 | Order-of-magnitude power/energy figures (µW harvest, mW radios) | Sourced in report §2, §5, §6 |
 | Specific scenario parameter values (capacities, cadences, seeds) | **Illustrative defaults**, tuned for a clear demo |
 | Any claim of continuous SLAM / onboard LLM on ambient RF | **Explicitly out of scope / infeasible** (report §6.4) |
@@ -82,6 +82,82 @@ Three named scenarios (see `src/engine/scenario.ts`), aligned with report §6.3:
 All scenarios are fully deterministic: every stochastic input comes from a seeded PRNG
 (`src/rng.ts`), so a given seed reproduces a run exactly.
 
+## Fused BLE + IMU localization
+
+The L recursion is **extended** (the original 4-state Kalman filter in
+`src/recursions/localization.ts` is untouched) with a 5-state Extended Kalman Filter
+`[px, py, vx, vy, yaw]` that **fuses** a planar inertial measurement unit with BLE RSSI
+ranging. The pieces:
+
+- **IMU** (`src/recursions/imu.ts`) — a timestamped planar accelerometer (body-frame specific
+  force) + yaw-rate gyro with configurable bias, white noise, sample rate, and optional
+  calibration. The EKF *predict* step is strapdown dead reckoning:
+
+  ```
+  yaw' = yaw + w*dt
+  a_w  = R(yaw) * a_body           (body -> world rotation)
+  v'   = v + a_w*dt
+  p'   = p + v*dt + 0.5*a_w*dt^2
+  P'   = F P F^T + G Qu G^T         (F = df/dx, G = df/du, Qu = accel/gyro variances)
+  ```
+
+  This is dead reckoning: any residual bias makes position error grow without bound (report
+  §6.4). A **zero-velocity update (ZUPT)** bounds that drift when stationary — but a planar
+  accel+gyro cannot tell constant-velocity cruise from true rest, so ZUPT additionally gates
+  on the *estimated* speed (`speedThreshold`). It is an honest partial mitigation, **not**
+  drift-free inertial navigation.
+
+- **BLE** (`src/recursions/ble.ts`) — fixed beacons with known positions and timestamped RSSI.
+  A log-distance path-loss model converts RSSI to range, then each beacon is fused as a
+  nonlinear scalar range EKF update:
+
+  ```
+  RSSI(d) = refRssi - 10*n*log10(d/d0),  d0 = 1 m   (invert for range)
+  h(x)    = sqrt((px-bx)^2 + (py-by)^2)
+  S       = H P H^T + R            (scalar)
+  NIS     = nu^2 / S               (chi-square, 1 dof)
+  K       = P H^T / S ;  x' = x + K*nu ;  P' = (I - K H) P
+  ```
+
+  A **chi-square NIS gate** rejects NLoS/multipath outliers: a rejected measurement leaves the
+  state completely unchanged and records a reason (`unknown-beacon`, `duplicate-beacon`,
+  `invalid-rssi`, `rssi-out-of-bounds`, `impossible-range`, `degenerate-geometry`, `nis-gate`).
+
+- **Orchestration** (`src/recursions/fusion.ts`) — one L step is predict → optional ZUPT →
+  sequential gated BLE updates, emitting per-step diagnostics (accepted/rejected counts, IMU
+  prediction count, ZUPT flag, per-source innovation/NIS, position uncertainty). BLE/IMU
+  outcomes feed **K** through the audited `updateKnowledge` provenance path (LoS vs NLoS
+  hypotheses); likelihood ratios are kept deliberately small so confidence climbs toward but
+  never pins at 1.0.
+
+Scenario **`ble-imu-fusion`** (`src/engine/fusion-scenario.ts`) is a deterministic 60 s walk
+(10 Hz) of a 2D agent past 6 beacons, exercising IMU drift, a coordinated turn, a stationary
+ZUPT window, an **energy-driven BLE-scan dropout**, an **RF-congestion scan dropout**, and an
+**NLoS outlier interval** on one beacon. The energy model accounts for always-on IMU sampling
+*and* per-scan BLE cost, so scans are neither free nor continuously feasible under ambient
+harvest — the scheduler skips scans as the supercap nears its brownout reserve.
+
+### Tuning parameters
+
+| Group | Parameter | Meaning |
+|---|---|---|
+| IMU | `accelBias`, `gyroBias`, `*NoiseStd`, `calibration` | sensor error model + filter-side correction |
+| ZUPT | `accelThreshold`, `gyroThreshold`, `speedThreshold`, `measurementStd` | stance detector + pseudo-measurement noise |
+| BLE | `refRssiDbm`, `pathLossExponent`, `rangeVarianceM2` | path-loss model + range measurement variance R |
+| BLE | `minRssiDbm`, `maxRssiDbm`, `maxRangeM` | validity bounds for RSSI / range |
+| BLE | `nisGateThreshold` | chi-square gate (6.63 ≈ 99% at 1 dof) |
+| Env | `rssiNoiseStd`, `visibilityRangeM`, `scanInterval`, `isScanDropout`, `nlosExcessDb` | sensor-side ground-truth synthesis |
+
+### Limitations
+
+- **RSSI ranging is coarse and multipath/NLoS-prone.** ~2.5 dB RSSI noise maps to several
+  metres of range error at ~20 m; the model uses a large range variance to reflect this and the
+  NIS gate to survive gross NLoS outliers. This is illustrative, not a calibrated device claim.
+- **IMU-only navigation drifts without bound.** ZUPT and BLE fusion bound the drift; they do
+  not eliminate it. There is no magnetometer/heading aid, so yaw is observed only indirectly.
+- Everything here is **illustrative** (see the honesty statement); no hardware accuracy is
+  claimed and no field validation is implied.
+
 ## Running
 
 ```bash
@@ -96,9 +172,17 @@ npm run cli -- run burst-sensing-with-storage --tail 8
 npm run cli -- run hybrid-harvested-plus-battery --json
 npm run cli -- duty    # illustrative break-even duty cycle
 
+# Fused BLE + IMU scenario, with the IMU-only vs fused comparison:
+npm run cli -- run ble-imu-fusion --compare --tail 8
+npm run cli -- run ble-imu-fusion --json
+
 # Or after `npm run build`:
 node dist/cli.js run harvest-only-intermittent
 ```
+
+Illustrative `run ble-imu-fusion --compare` output (seed 7): fused RMSE **2.18 m** vs IMU-only
+**3.59 m** (~**39%** improvement) over the same trajectory, with 25 energy-skipped scans, 57
+brownout steps, 11 NIS-gated NLoS rejections, and a final K MAP of `los` at confidence 0.987.
 
 ## Library API
 
@@ -125,3 +209,12 @@ protection, the no-double-conversion invariant, scheduler action choice, K prove
 adapter layer, and a **regression test** for the report's illustrative upper bound: ~8 µW net DC
 vs a ~15 mW radio active load yields a break-even duty cycle of ~0.05% (not continuous
 feasibility). See `tests/`.
+
+For the fused estimator (`tests/imu.test.ts`, `tests/ble.test.ts`, `tests/fusion.test.ts`,
+`tests/fusion-simulator.test.ts`): IMU integration/rotation and monotonic drift, bias/noise
+determinism, ZUPT firing and the cruise speed-gate, RSSI→range conversion and calibration
+override, the BLE EKF update, NIS gating, unknown/invalid/out-of-bounds/impossible-range
+rejection with **rejected-measurement immutability**, duplicate-beacon rejection, seeded
+determinism with dropout/outliers, energy accounting under the brownout budget, and a
+**comparative regression** asserting fused BLE+IMU cuts RMSE by ≥15% vs IMU-only dead reckoning
+on the same trajectory/seed. Design note: [`docs/fusion-design.md`](docs/fusion-design.md).
